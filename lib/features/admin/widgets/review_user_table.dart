@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/user_list_model.dart';
+import '../../../core/models/review_user_model.dart';
 import '../../../core/theme/app_theme.dart';
 
-class UserTable extends StatelessWidget {
-  final List<UserListItem> users;
-  final Function(String userId)? onEdit;
-  final Function(UserListItem user)? onSuspend;
-  final Function(UserListItem user)? onDelete;
+class ReviewUserTable extends StatelessWidget {
+  final List<ReviewUserItem> users;
+  final Function(String userId)? onReview;
   final Function(String column, bool ascending)? onSort;
   final String? sortColumn;
   final bool sortAscending;
 
-  const UserTable({
+  const ReviewUserTable({
     super.key,
     required this.users,
-    this.onEdit,
-    this.onSuspend,
-    this.onDelete,
+    this.onReview,
     this.onSort,
     this.sortColumn,
     this.sortAscending = true,
@@ -49,10 +45,9 @@ class UserTable extends StatelessWidget {
               children: [
                 _buildHeaderCell('User ID', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
                 _buildHeaderCell('Name', flex: 2, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Region', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
                 _buildHeaderCell('Email', flex: 2, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Status', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Date Joined', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
+                _buildHeaderCell('Account Status', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
+                _buildHeaderCell('Date Submitted', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
                 _buildHeaderCell('Actions', flex: 1),
               ],
             ),
@@ -108,7 +103,7 @@ class UserTable extends StatelessWidget {
     );
   }
 
-  Widget _buildTableRow(UserListItem user, BuildContext context) {
+  Widget _buildTableRow(ReviewUserItem user, BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
@@ -120,11 +115,10 @@ class UserTable extends StatelessWidget {
         children: [
           _buildCell('#${user.userId}', flex: 1),
           _buildCell(user.name, flex: 2),
-          _buildCell(user.region, flex: 1),
           _buildCell(user.email, flex: 2),
-          _buildStatusCell(user.status, flex: 1),
+          _buildStatusCell(user.accountStatus, flex: 1),
           _buildCell(
-            '${user.dateJoined.year}-${user.dateJoined.month.toString().padLeft(2, '0')}-${user.dateJoined.day.toString().padLeft(2, '0')}',
+            '${user.dateSubmitted.year}-${user.dateSubmitted.month.toString().padLeft(2, '0')}-${user.dateSubmitted.day.toString().padLeft(2, '0')}',
             flex: 1,
           ),
           _buildActionsCell(user, context, flex: 1),
@@ -147,14 +141,39 @@ class UserTable extends StatelessWidget {
   }
 
   Widget _buildStatusCell(String status, {int flex = 1}) {
-    final isActive = status.toLowerCase() == 'active';
-    // Capitalize first letter and handle truncation if needed
+    // Capitalize first letter and handle status text
     final statusLower = status.toLowerCase();
-    final statusText = statusLower == 'active' 
-        ? 'Active' 
-        : statusLower == 'suspended' 
-            ? 'Suspended' 
-            : status.substring(0, status.length > 10 ? 10 : status.length);
+    String statusText;
+    bool isKycPending = false;
+    bool isSuspendedPending = false;
+    
+    if (statusLower.contains('kyc pending') || statusLower == 'kyc pending') {
+      statusText = 'KYC Pending';
+      isKycPending = true;
+    } else if (statusLower.contains('suspended pending') || statusLower == 'suspended pending' || statusLower == 'suspended') {
+      statusText = 'Suspended Pending';
+      isSuspendedPending = true;
+    } else {
+      statusText = status.substring(0, status.length > 15 ? 15 : status.length);
+    }
+    
+    // Different colors for different statuses
+    Color backgroundColor;
+    Color textColor;
+    
+    if (isKycPending) {
+      // KYC Pending: Orange/Amber background with dark text
+      backgroundColor = const Color(0xFFFFF4E6); // Light orange
+      textColor = const Color(0xFFE67E22); // Dark orange
+    } else if (isSuspendedPending) {
+      // Suspended Pending: Red background with dark red text
+      backgroundColor = const Color(0xFFFFE6E6); // Light red
+      textColor = const Color(0xFFE74C3C); // Dark red
+    } else {
+      // Default: Grey
+      backgroundColor = const Color(0xFFF0F0F0);
+      textColor = AppTheme.textPrimary;
+    }
     
     return Expanded(
       flex: flex,
@@ -163,18 +182,14 @@ class UserTable extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF387366).withOpacity(0.1)
-                : const Color(0xFFF54F43).withOpacity(0.1),
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             statusText,
             style: TextStyle(
               fontSize: 12,
-              color: isActive
-                  ? const Color(0xFF387366)
-                  : const Color(0xFFF54F43),
+              color: textColor,
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
@@ -184,49 +199,26 @@ class UserTable extends StatelessWidget {
     );
   }
 
-  Widget _buildActionsCell(UserListItem user, BuildContext context, {int flex = 1}) {
+  Widget _buildActionsCell(ReviewUserItem user, BuildContext context, {int flex = 1}) {
     return Expanded(
       flex: flex,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () => onEdit?.call(user.userId),
-            child: const Text(
-              'Edit User',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF387366),
-              ),
-            ),
+      child: ElevatedButton(
+        onPressed: () => onReview?.call(user.userId),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF387366),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          minimumSize: const Size(0, 36),
+        ),
+        child: const Text(
+          'Review',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () => onSuspend?.call(user),
-            child: Text(
-              user.status.toLowerCase() == 'active' ? 'Suspend' : 'Activate',
-              style: TextStyle(
-                fontSize: 14,
-                color: user.status.toLowerCase() == 'active'
-                    ? const Color(0xFFF2994A)
-                    : const Color(0xFF1B998B),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () => onDelete?.call(user),
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.red,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+

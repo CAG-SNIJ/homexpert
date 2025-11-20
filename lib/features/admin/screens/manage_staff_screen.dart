@@ -1,42 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/models/user_list_model.dart';
+import '../../../core/models/staff_list_model.dart';
 import '../../../core/services/admin_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/admin_header.dart';
 import '../widgets/admin_sidebar.dart';
-import '../widgets/user_table.dart';
+import '../widgets/staff_table.dart';
 import '../widgets/pagination_widget.dart';
 
-class ManageUserScreen extends StatefulWidget {
-  const ManageUserScreen({super.key});
+class ManageStaffScreen extends StatefulWidget {
+  const ManageStaffScreen({super.key});
 
   @override
-  State<ManageUserScreen> createState() => _ManageUserScreenState();
+  State<ManageStaffScreen> createState() => _ManageStaffScreenState();
 }
 
-class _ManageUserScreenState extends State<ManageUserScreen> {
+class _ManageStaffScreenState extends State<ManageStaffScreen> {
   final AdminService _adminService = AdminService();
   final TextEditingController _searchController = TextEditingController();
-  
-  List<UserListItem> _users = [];
+  final FocusNode _searchFocusNode = FocusNode();
+
+  List<StaffListItem> _staff = [];
   bool _isLoading = true;
   String? _error;
   int _currentPage = 1;
   int _totalPages = 1;
-  int _totalUsers = 0;
+  int _totalStaff = 0;
   final int _itemsPerPage = 10;
   String _searchQuery = '';
   String? _sortColumn;
   bool _sortAscending = true;
-  final FocusNode _searchFocusNode = FocusNode();
   bool _isSearchFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _loadStaff();
     _searchFocusNode.addListener(() {
       setState(() {
         _isSearchFocused = _searchFocusNode.hasFocus;
@@ -51,7 +51,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUsers({bool resetPage = false}) async {
+  Future<void> _loadStaff({bool resetPage = false}) async {
     if (resetPage) {
       _currentPage = 1;
     }
@@ -62,7 +62,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
     });
 
     try {
-      final result = await _adminService.getUsers(
+      final result = await _adminService.getStaffMembers(
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
         page: _currentPage,
         limit: _itemsPerPage,
@@ -70,10 +70,10 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
 
       if (mounted) {
         setState(() {
-          _users = result['users'] as List<UserListItem>;
+          _staff = result['staff'] as List<StaffListItem>;
           final pagination = result['pagination'] as Map<String, dynamic>;
           _totalPages = pagination['totalPages'] ?? 1;
-          _totalUsers = pagination['total'] ?? 0;
+          _totalStaff = pagination['total'] ?? 0;
           _isLoading = false;
         });
       }
@@ -89,18 +89,18 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
 
   void _handleSearch() {
     _searchQuery = _searchController.text.trim();
-    _loadUsers(resetPage: true);
+    _loadStaff(resetPage: true);
   }
 
   void _applySorting() {
     if (_sortColumn == null) return;
-    
+
     setState(() {
-      _users.sort((a, b) {
+      _staff.sort((a, b) {
         int comparison = 0;
         switch (_sortColumn) {
-          case 'User ID':
-            comparison = a.userId.compareTo(b.userId);
+          case 'Staff ID':
+            comparison = a.staffId.compareTo(b.staffId);
             break;
           case 'Name':
             comparison = a.name.compareTo(b.name);
@@ -123,202 +123,19 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
     });
   }
 
-  void _handleEdit(String userId) {
-    // Navigate to edit user page
-    context.go('/admin/users/edit/$userId');
-  }
-
-  void _handleSuspend(UserListItem user) {
-    final isSuspending = user.status.toLowerCase() == 'active';
-    final actionText = isSuspending ? 'suspend' : 'activate';
-    final actionTextCapitalized = isSuspending ? 'Suspend' : 'Activate';
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          '$actionTextCapitalized User',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to $actionText this user?',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E8EB)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'User ID: ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        '#${user.userId}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'User Name: ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          user.name,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'Current Status: ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        user.status,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: user.status.toLowerCase() == 'active'
-                              ? const Color(0xFF387366)
-                              : const Color(0xFFF54F43),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'No',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Close confirmation dialog first
-              Navigator.of(context).pop();
-              
-              // Wait a frame to ensure dialog is closed
-              await Future.delayed(const Duration(milliseconds: 100));
-              
-              if (!mounted) return;
-              
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (loadingDialogContext) => PopScope(
-                  canPop: false,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
-              );
-
-              try {
-                final newStatus = isSuspending ? 'suspended' : 'active';
-                await _adminService.updateUserStatus(user.userId, newStatus);
-                
-                if (!mounted) return;
-                
-                // Close loading dialog using the correct context
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                }
-                
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('User ${actionText}ed successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                
-                // Refresh user list
-                _loadUsers();
-              } catch (e) {
-                if (!mounted) return;
-                
-                // Close loading dialog using the correct context
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                }
-                
-                // Show error message
-                final errorMessage = e.toString().replaceFirst('Exception: ', '');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error ${actionText}ing user: $errorMessage'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isSuspending ? const Color(0xFFF54F43) : const Color(0xFF387366),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: Text(
-              'Yes, $actionTextCapitalized',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+  void _handleEdit(String staffId) {
+    // TODO: Navigate to edit staff page when implemented
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Edit staff: $staffId (coming soon)')),
     );
   }
 
-  void _handleDelete(UserListItem user) {
+  void _handleDelete(StaffListItem staffMember) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text(
-          'Delete User',
+          'Delete Staff',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -330,7 +147,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Are you sure you want to delete this user?',
+              'Are you sure you want to delete this staff member?',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
@@ -347,14 +164,14 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                   Row(
                     children: [
                       const Text(
-                        'User ID: ',
+                        'Staff ID: ',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
                       ),
                       Text(
-                        '#${user.userId}',
+                        '#${staffMember.staffId}',
                         style: const TextStyle(fontSize: 14),
                       ),
                     ],
@@ -363,7 +180,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                   Row(
                     children: [
                       const Text(
-                        'User Name: ',
+                        'Name: ',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -371,7 +188,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                       ),
                       Expanded(
                         child: Text(
-                          user.name,
+                          staffMember.name,
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),
@@ -403,63 +220,14 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () async {
-              // Close confirmation dialog first
+            onPressed: () {
               Navigator.of(context).pop();
-              
-              // Wait a frame to ensure dialog is closed
-              await Future.delayed(const Duration(milliseconds: 100));
-              
-              if (!mounted) return;
-              
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (dialogContext) => PopScope(
-                  canPop: false,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Delete staff feature coming soon'),
+                  duration: Duration(seconds: 3),
                 ),
               );
-
-              try {
-                await _adminService.deleteUser(user.userId);
-                
-                if (!mounted) return;
-                
-                // Close loading dialog
-                Navigator.of(context).pop();
-                
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('User deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                
-                // Refresh user list
-                _loadUsers();
-              } catch (e) {
-                if (!mounted) return;
-                
-                // Close loading dialog
-                Navigator.of(context).pop();
-                
-                // Show error message
-                final errorMessage = e.toString().replaceFirst('Exception: ', '');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error deleting user: $errorMessage'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
-              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -474,6 +242,87 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleToggleStatus(StaffListItem staffMember) async {
+    final isCurrentlyActive = staffMember.status.toLowerCase() == 'active';
+    final targetStatus = isCurrentlyActive ? 'inactivate' : 'activate';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '${targetStatus[0].toUpperCase()}${targetStatus.substring(1)} Staff',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to $targetStatus ${staffMember.name}? They ${isCurrentlyActive ? 'will not be able to sign in while inactive.' : 'will regain access once activated.'}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  isCurrentlyActive ? const Color(0xFFF2994A) : AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              targetStatus[0].toUpperCase() + targetStatus.substring(1),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _adminService.updateStaffStatus(
+        staffId: staffMember.staffId,
+        isActive: !isCurrentlyActive,
+      );
+      await _loadStaff();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Staff ${!isCurrentlyActive ? 'activated' : 'inactivated'} successfully',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to update status: ${e.toString().replaceFirst('Exception: ', '')}',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -496,14 +345,13 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
         body: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Main Content (bottom layer)
             Row(
               children: [
-                const SizedBox(width: 260), // Spacer for sidebar
+                const SizedBox(width: 260),
                 Expanded(
                   child: Column(
                     children: [
-                      const SizedBox(height: 80), // Spacer for header
+                      const SizedBox(height: 80),
                       Expanded(
                         child: Container(
                           color: Colors.white,
@@ -534,7 +382,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                           ),
                                           const SizedBox(height: 24),
                                           ElevatedButton(
-                                            onPressed: _loadUsers,
+                                            onPressed: _loadStaff,
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:
                                                   AppTheme.primaryColor,
@@ -551,22 +399,20 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          // Title and Create New Button
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.start,
                                             children: [
                                               const Text(
-                                                'Manage User',
+                                                'Manage Staff',
                                                 style: TextStyle(
                                                   fontSize: 28,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF387366),
                                                 ),
                                               ),
-                                              const SizedBox(width: 40),
+                                              const SizedBox(width: 24),
                                               ElevatedButton(
                                                 onPressed: () {
-                                                  context.go('/admin/users/create');
+                                                  context.go('/admin/staff/create');
                                                 },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
@@ -577,12 +423,11 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                                           horizontal: 24,
                                                           vertical: 12),
                                                 ),
-                                                child: const Text('Create New'),
+                                                child: const Text('Create Staff'),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 24),
-                                          // Search Bar
                                           Container(
                                             decoration: BoxDecoration(
                                               border: Border.all(
@@ -591,47 +436,66 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                                     : const Color(0xFFE5E8EB),
                                                 width: _isSearchFocused ? 2 : 1,
                                               ),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Row(
                                               children: [
                                                 Expanded(
                                                   child: TextField(
-                                                    controller: _searchController,
+                                                    controller:
+                                                        _searchController,
                                                     focusNode: _searchFocusNode,
-                                                    decoration: const InputDecoration(
-                                                      hintText: 'Search User',
+                                                    decoration:
+                                                        const InputDecoration(
+                                                      hintText: 'Search Staff',
                                                       prefixIcon: Icon(
                                                         Icons.search,
-                                                        color: AppTheme.textSecondary,
+                                                        color: AppTheme
+                                                            .textSecondary,
                                                       ),
                                                       border: InputBorder.none,
-                                                      enabledBorder: InputBorder.none,
-                                                      focusedBorder: InputBorder.none,
-                                                      contentPadding: EdgeInsets.symmetric(
+                                                      enabledBorder:
+                                                          InputBorder.none,
+                                                      focusedBorder:
+                                                          InputBorder.none,
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
                                                         horizontal: 16,
                                                         vertical: 12,
                                                       ),
                                                     ),
-                                                    onSubmitted: (_) => _handleSearch(),
+                                                    onSubmitted: (_) =>
+                                                        _handleSearch(),
                                                   ),
                                                 ),
                                                 Container(
-                                                  margin: const EdgeInsets.only(right: 4),
+                                                  margin: const EdgeInsets.only(
+                                                      right: 4),
                                                   child: ElevatedButton(
                                                     onPressed: _handleSearch,
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: const Color(0xFF387366),
-                                                      foregroundColor: Colors.white,
-                                                      padding: const EdgeInsets.symmetric(
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          const Color(
+                                                              0xFF387366),
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
                                                         horizontal: 24,
                                                         vertical: 12,
                                                       ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(6),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(6),
                                                       ),
                                                       elevation: 0,
-                                                      minimumSize: const Size(0, 40),
+                                                      minimumSize:
+                                                          const Size(0, 40),
                                                     ),
                                                     child: const Text('Search'),
                                                   ),
@@ -640,12 +504,11 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 24),
-                                          // User Table
-                                          UserTable(
-                                            users: _users,
+                                          StaffTable(
+                                            staff: _staff,
                                             onEdit: _handleEdit,
-                                            onSuspend: _handleSuspend,
                                             onDelete: _handleDelete,
+                                            onToggleStatus: _handleToggleStatus,
                                             onSort: (column, ascending) {
                                               setState(() {
                                                 _sortColumn = column;
@@ -657,7 +520,6 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                             sortAscending: _sortAscending,
                                           ),
                                           const SizedBox(height: 24),
-                                          // Pagination
                                           if (_totalPages > 1)
                                             PaginationWidget(
                                               currentPage: _currentPage,
@@ -666,7 +528,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                                 setState(() {
                                                   _currentPage = page;
                                                 });
-                                                _loadUsers();
+                                                _loadStaff();
                                               },
                                             ),
                                         ],
@@ -679,16 +541,14 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                 ),
               ],
             ),
-            // Sidebar (middle layer)
             Positioned(
               left: 0,
               top: 70,
               bottom: 0,
               child: AdminSidebar(
-                currentRoute: '/admin/users',
+                currentRoute: '/admin/staff',
               ),
             ),
-            // Header (top layer)
             const Positioned(
               left: 0,
               top: 0,

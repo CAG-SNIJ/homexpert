@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/user_list_model.dart';
+import '../../../core/models/staff_list_model.dart';
 import '../../../core/theme/app_theme.dart';
 
-class UserTable extends StatelessWidget {
-  final List<UserListItem> users;
-  final Function(String userId)? onEdit;
-  final Function(UserListItem user)? onSuspend;
-  final Function(UserListItem user)? onDelete;
+class StaffTable extends StatelessWidget {
+  final List<StaffListItem> staff;
+  final Function(String staffId)? onEdit;
+  final Function(StaffListItem staff)? onDelete;
+  final Function(StaffListItem staff)? onToggleStatus;
   final Function(String column, bool ascending)? onSort;
   final String? sortColumn;
   final bool sortAscending;
 
-  const UserTable({
+  const StaffTable({
     super.key,
-    required this.users,
+    required this.staff,
     this.onEdit,
-    this.onSuspend,
     this.onDelete,
+    this.onToggleStatus,
     this.onSort,
     this.sortColumn,
     this.sortAscending = true,
@@ -32,7 +32,6 @@ class UserTable extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Table Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -47,40 +46,29 @@ class UserTable extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _buildHeaderCell('User ID', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Name', flex: 2, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Region', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Email', flex: 2, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Status', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Date Joined', flex: 1, onSort: onSort, sortColumn: sortColumn, sortAscending: sortAscending),
-                _buildHeaderCell('Actions', flex: 1),
+                _buildHeaderCell('Staff ID', flex: 1),
+                _buildHeaderCell('Name', flex: 2),
+                _buildHeaderCell('Region', flex: 1),
+                _buildHeaderCell('Email', flex: 2),
+                _buildHeaderCell('Status', flex: 1),
+                _buildHeaderCell('Date Joined', flex: 1),
+                _buildHeaderCell('Actions', flex: 1, isSortable: false),
               ],
             ),
           ),
-          // Table Body
-          ...users.map((user) => _buildTableRow(user, context)),
+          ...staff.map((member) => _buildRow(member)),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCell(
-    String text, {
-    int flex = 1,
-    Function(String column, bool ascending)? onSort,
-    String? sortColumn,
-    bool sortAscending = true,
-  }) {
-    final isSortable = onSort != null && text != 'Actions';
+  Widget _buildHeaderCell(String text, {int flex = 1, bool isSortable = true}) {
     final isSorted = sortColumn == text;
-    
     return Expanded(
       flex: flex,
       child: InkWell(
-        onTap: isSortable
-            ? () {
-                onSort!(text, isSorted ? !sortAscending : true);
-              }
+        onTap: isSortable && onSort != null
+            ? () => onSort!(text, isSorted ? !sortAscending : true)
             : null,
         child: Row(
           children: [
@@ -92,7 +80,7 @@ class UserTable extends StatelessWidget {
                 color: AppTheme.textPrimary,
               ),
             ),
-            if (isSortable) ...[
+            if (isSortable && onSort != null) ...[
               const SizedBox(width: 4),
               Icon(
                 isSorted
@@ -108,7 +96,7 @@ class UserTable extends StatelessWidget {
     );
   }
 
-  Widget _buildTableRow(UserListItem user, BuildContext context) {
+  Widget _buildRow(StaffListItem member) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
@@ -118,16 +106,16 @@ class UserTable extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _buildCell('#${user.userId}', flex: 1),
-          _buildCell(user.name, flex: 2),
-          _buildCell(user.region, flex: 1),
-          _buildCell(user.email, flex: 2),
-          _buildStatusCell(user.status, flex: 1),
+          _buildCell(member.staffId, flex: 1),
+          _buildCell(member.name, flex: 2),
+          _buildCell(member.region, flex: 1),
+          _buildCell(member.email, flex: 2),
+          _buildStatusCell(member.status, flex: 1),
           _buildCell(
-            '${user.dateJoined.year}-${user.dateJoined.month.toString().padLeft(2, '0')}-${user.dateJoined.day.toString().padLeft(2, '0')}',
+            '${member.dateJoined.year}-${member.dateJoined.month.toString().padLeft(2, '0')}-${member.dateJoined.day.toString().padLeft(2, '0')}',
             flex: 1,
           ),
-          _buildActionsCell(user, context, flex: 1),
+          _buildActions(member, flex: 1),
         ],
       ),
     );
@@ -148,14 +136,6 @@ class UserTable extends StatelessWidget {
 
   Widget _buildStatusCell(String status, {int flex = 1}) {
     final isActive = status.toLowerCase() == 'active';
-    // Capitalize first letter and handle truncation if needed
-    final statusLower = status.toLowerCase();
-    final statusText = statusLower == 'active' 
-        ? 'Active' 
-        : statusLower == 'suspended' 
-            ? 'Suspended' 
-            : status.substring(0, status.length > 10 ? 10 : status.length);
-    
     return Expanded(
       flex: flex,
       child: Align(
@@ -169,32 +149,32 @@ class UserTable extends StatelessWidget {
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
-            statusText,
+            status,
             style: TextStyle(
               fontSize: 12,
+              fontWeight: FontWeight.w500,
               color: isActive
                   ? const Color(0xFF387366)
                   : const Color(0xFFF54F43),
-              fontWeight: FontWeight.w500,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildActionsCell(UserListItem user, BuildContext context, {int flex = 1}) {
+  Widget _buildActions(StaffListItem member, {int flex = 1}) {
+    final isActive = member.status.toLowerCase() == 'active';
+
     return Expanded(
       flex: flex,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: () => onEdit?.call(user.userId),
+            onTap: () => onEdit?.call(member.staffId),
             child: const Text(
-              'Edit User',
+              'Edit Staff',
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF387366),
@@ -203,20 +183,18 @@ class UserTable extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           InkWell(
-            onTap: () => onSuspend?.call(user),
+            onTap: () => onToggleStatus?.call(member),
             child: Text(
-              user.status.toLowerCase() == 'active' ? 'Suspend' : 'Activate',
+              isActive ? 'Inactivate' : 'Activate',
               style: TextStyle(
                 fontSize: 14,
-                color: user.status.toLowerCase() == 'active'
-                    ? const Color(0xFFF2994A)
-                    : const Color(0xFF1B998B),
+                color: isActive ? const Color(0xFFF2994A) : const Color(0xFF1B998B),
               ),
             ),
           ),
           const SizedBox(height: 8),
           InkWell(
-            onTap: () => onDelete?.call(user),
+            onTap: () => onDelete?.call(member),
             child: const Text(
               'Delete',
               style: TextStyle(
@@ -230,3 +208,4 @@ class UserTable extends StatelessWidget {
     );
   }
 }
+

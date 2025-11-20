@@ -8,8 +8,14 @@ import '../../features/staff/screens/staff_login_screen.dart';
 import '../../features/staff/screens/staff_dashboard_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/manage_user_screen.dart';
+import '../../features/admin/screens/manage_staff_screen.dart';
+import '../../features/admin/screens/create_staff_screen.dart';
 import '../../features/admin/screens/create_user_screen.dart';
+import '../../features/admin/screens/edit_user_screen.dart';
+import '../../features/admin/screens/review_user_account_screen.dart';
+import '../../features/admin/screens/review_user_detail_screen.dart';
 import '../../features/admin/screens/user_created_success_screen.dart';
+import '../../features/admin/screens/agent_created_success_screen.dart';
 import '../../core/services/auth_service.dart';
 import '../constants/app_constants.dart';
 
@@ -99,6 +105,16 @@ class AppRouter {
         builder: (context, state) => const ManageUserScreen(),
       ),
       GoRoute(
+        path: '/admin/staff',
+        name: 'manage_staff',
+        builder: (context, state) => const ManageStaffScreen(),
+      ),
+      GoRoute(
+        path: '/admin/staff/create',
+        name: 'create_staff',
+        builder: (context, state) => const CreateStaffScreen(),
+      ),
+      GoRoute(
         path: '/admin/users/create',
         name: 'create_user',
         builder: (context, state) => const CreateUserScreen(),
@@ -107,6 +123,32 @@ class AppRouter {
         path: '/admin/users/create/success',
         name: 'user_created_success',
         builder: (context, state) => const UserCreatedSuccessScreen(),
+      ),
+      GoRoute(
+        path: '/admin/agents/create/success',
+        name: 'agent_created_success',
+        builder: (context, state) => const AgentCreatedSuccessScreen(),
+      ),
+      GoRoute(
+        path: '/admin/users/edit/:userId',
+        name: 'edit_user',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'] ?? '';
+          return EditUserScreen(userId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/admin/users/review',
+        name: 'review_user_account',
+        builder: (context, state) => const ReviewUserAccountScreen(),
+      ),
+      GoRoute(
+        path: '/admin/users/review/:userId',
+        name: 'review_user_detail',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'] ?? '';
+          return ReviewUserDetailScreen(userId: userId);
+        },
       ),
     ],
   );

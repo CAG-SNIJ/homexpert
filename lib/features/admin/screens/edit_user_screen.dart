@@ -5,16 +5,20 @@ import '../../../core/services/admin_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/admin_header.dart';
 import '../widgets/admin_sidebar.dart';
-import '../widgets/phone_input_field.dart';
 
-class CreateUserScreen extends StatefulWidget {
-  const CreateUserScreen({super.key});
+class EditUserScreen extends StatefulWidget {
+  final String userId;
+  
+  const EditUserScreen({
+    super.key,
+    required this.userId,
+  });
 
   @override
-  State<CreateUserScreen> createState() => _CreateUserScreenState();
+  State<EditUserScreen> createState() => _EditUserScreenState();
 }
 
-class _CreateUserScreenState extends State<CreateUserScreen> {
+class _EditUserScreenState extends State<EditUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final AdminService _adminService = AdminService();
   
@@ -33,6 +37,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   String? _selectedCountryCode;
   
   bool _isSubmitting = false;
+  bool _isLoading = true;
   final ValueNotifier<String> _emailPrefixNotifier = ValueNotifier<String>('');
 
   // Options for dropdowns
@@ -220,6 +225,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       82,
       (index) => (maxYear - index).toString(),
     );
+    _loadUserData();
   }
 
   @override
@@ -232,22 +238,74 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     super.dispose();
   }
 
-  void _resetForm() {
-    _formKey.currentState?.reset();
-    _firstNameController.clear();
-    _lastNameController.clear();
-    _mobilePhoneController.clear();
-    _emailController.clear();
-    setState(() {
-      _selectedRegion = null;
-      _selectedArea = null;
-      _selectedGender = null;
-      _selectedMonth = null;
-      _selectedYear = null;
-    });
+  Future<void> _loadUserData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final userData = await _adminService.getUserById(widget.userId);
+
+      if (mounted) {
+        setState(() {
+          _firstNameController.text = userData['first_name'] ?? '';
+          _lastNameController.text = userData['last_name'] ?? '';
+          _emailController.text = userData['email'] ?? '';
+          _selectedCountryCode = userData['country_code'] ?? '+60';
+          _mobilePhoneController.text = userData['phone_number'] ?? '';
+          
+          final region = userData['region'];
+          _selectedRegion = (region == null || region.toString().isEmpty) ? null : region.toString();
+          
+          final area = userData['area'];
+          _selectedArea = (area == null || area.toString().isEmpty) ? null : area.toString();
+          
+          final gender = userData['gender'];
+          _selectedGender = (gender == null || gender.toString().isEmpty) ? null : gender.toString();
+          
+          final month = userData['birthday_month'];
+          _selectedMonth = (month == null || month.toString().isEmpty) ? null : month.toString();
+          
+          final year = userData['birthday_year'];
+          _selectedYear = (year == null || year.toString().isEmpty) ? null : year.toString();
+          
+          // Set email prefix for suggestions
+          final email = userData['email'] ?? '';
+          final atIndex = email.indexOf('@');
+          if (atIndex != -1) {
+            _emailPrefixNotifier.value = email.substring(0, atIndex);
+          }
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading user: ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        // Navigate back after showing error
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            context.go('/admin/users');
+          }
+        });
+      }
+    }
   }
 
-  Future<void> _handleCreate() async {
+  void _resetForm() {
+    _loadUserData();
+  }
+
+  Future<void> _handleUpdate() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isSubmitting = true;
@@ -278,7 +336,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
         final fullPhoneNumber = '${_selectedCountryCode!}${_mobilePhoneController.text.trim()}';
 
-        await _adminService.createUser(
+        await _adminService.updateUser(
+          userId: widget.userId,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
           email: _emailController.text.trim(),
@@ -291,14 +350,21 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         );
         
         if (mounted) {
-          // Navigate to success screen
-          context.go('/admin/users/create/success');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User updated successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          // Navigate back to manage users screen
+          context.go('/admin/users');
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error creating user: ${e.toString().replaceFirst('Exception: ', '')}'),
+              content: Text('Error updating user: ${e.toString().replaceFirst('Exception: ', '')}'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 4),
             ),
@@ -316,6 +382,63 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return PopScope(
+        canPop: true,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (!didPop) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              if (mounted) {
+                context.go(AppConstants.routeHome);
+              }
+            }
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Row(
+                children: [
+                  const SizedBox(width: 260),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 60),
+                        Expanded(
+                          child: Container(
+                            color: Colors.white,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Positioned(
+                left: 0,
+                top: 70,
+                bottom: 0,
+                child: AdminSidebar(currentRoute: '/admin/users'),
+              ),
+              const Positioned(
+                left: 0,
+                top: 0,
+                right: 0,
+                child: AdminHeader(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
@@ -354,7 +477,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                 children: [
                                   // Title
                                   const Text(
-                                    'Create User',
+                                    'Edit User',
                                     style: TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
@@ -397,16 +520,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 20),
-                                      PhoneInputField(
-                                        controller: _mobilePhoneController,
-                                        selectedCountryCode: _selectedCountryCode,
-                                        countryCodes: _countryCodes,
-                                        onCountryCodeChanged: (value) {
-                                          setState(() {
-                                            _selectedCountryCode = value;
-                                          });
-                                        },
-                                      ),
+                                      _buildPhoneField(),
                                       const SizedBox(height: 20),
                                       _buildEmailField(),
                                       const SizedBox(height: 20),
@@ -500,7 +614,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton(
-                                          onPressed: _isSubmitting ? null : _handleCreate,
+                                          onPressed: _isSubmitting ? null : _handleUpdate,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppTheme.primaryColor,
                                             foregroundColor: Colors.white,
@@ -516,7 +630,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                                   ),
                                                 )
                                               : const Text(
-                                                  'Create',
+                                                  'Update',
                                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                                                 ),
                                         ),
@@ -556,7 +670,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               top: 70,
               bottom: 0,
               child: AdminSidebar(
-                currentRoute: '/admin/users/create',
+                currentRoute: '/admin/users/edit',
               ),
             ),
             // Header (top layer)
@@ -724,6 +838,107 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
   }
 
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Mobile Phone',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 360;
+            final dropdown = _buildCountryCodeDropdown();
+            final phoneInput = _buildPhoneNumberField();
+
+            if (isCompact) {
+              return Column(
+                children: [
+                  dropdown,
+                  const SizedBox(height: 12),
+                  phoneInput,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Flexible(
+                  flex: 2,
+                  child: dropdown,
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  flex: 8,
+                  child: phoneInput,
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountryCodeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedCountryCode,
+      onChanged: (value) {
+        setState(() {
+          _selectedCountryCode = value;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Select code';
+        }
+        return null;
+      },
+      items: _countryCodes
+          .map(
+            (code) => DropdownMenuItem<String>(
+              value: code['code'],
+              child: Text(code['label'] ?? ''),
+            ),
+          )
+          .toList(),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE5E8EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE5E8EB)),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _buildPhoneNumberField() {
+    return _buildTextField(
+      controller: _mobilePhoneController,
+      label: '',
+      hint: 'Enter mobile phone',
+      keyboardType: TextInputType.phone,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter mobile phone';
+        }
+        if (!RegExp(r'^[0-9]{7,11}$').hasMatch(value)) {
+          return 'Enter digits only (7-11 numbers)';
+        }
+        return null;
+      },
+    );
+  }
 
   Widget _buildDropdown({
     required String label,

@@ -18,7 +18,8 @@ class AdminSidebar extends StatefulWidget {
   State<AdminSidebar> createState() => _AdminSidebarState();
 }
 
-class _AdminSidebarState extends State<AdminSidebar> {
+class _AdminSidebarState extends State<AdminSidebar>
+    with SingleTickerProviderStateMixin {
   bool _isExpanded = true;
   late bool _userExpanded;
   bool _agentExpanded = false;
@@ -29,6 +30,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
     super.initState();
     // Auto-expand User menu if on a user-related route
     _userExpanded = widget.currentRoute.startsWith('/admin/users');
+    _staffExpanded = widget.currentRoute.startsWith('/admin/staff');
   }
 
   void _toggleSidebar() {
@@ -135,9 +137,10 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         _staffExpanded = !_staffExpanded;
                       });
                     },
-                    children: [
-                      _buildSubNavItem('All Staff', '/admin/staff'),
-                      _buildSubNavItem('Add Staff', '/admin/staff/add'),
+                    children:
+                        [
+                      _buildSubNavItem('Manage Staff', '/admin/staff'),
+                      _buildSubNavItem('Create Staff', '/admin/staff/create'),
                     ],
                   ),
                   _buildNavItem(
@@ -261,18 +264,29 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       ),
                     ),
                   ),
-                  Icon(
-                    isExpanded ? Icons.arrow_left : Icons.arrow_right,
-                    color: AppTheme.textPrimary,
-                    size: 20,
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    child: const Icon(
+                      Icons.arrow_right,
+                      color: AppTheme.textPrimary,
+                      size: 20,
+                    ),
                   ),
                 ],
               ],
             ),
           ),
         ),
-        if (_isExpanded && isExpanded)
-          ...children,
+        ClipRect(
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child: _isExpanded && isExpanded
+                ? Column(children: children)
+                : const SizedBox.shrink(),
+          ),
+        ),
       ],
     );
   }

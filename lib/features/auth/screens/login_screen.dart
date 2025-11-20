@@ -22,10 +22,18 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const HomepageHeader(),
+      body: CustomScrollView(
+        slivers: [
+          // Sticky Header
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyHeaderDelegate(
+              child: HomepageHeader(),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
             Container(
               width: double.infinity,
               color: Colors.white,
@@ -60,7 +68,7 @@ class LoginScreen extends StatelessWidget {
                                 title: 'User Account',
                                 description: 'For buyers and private sellers',
                                 buttonLabel: 'Sign In',
-                                onPressed: () => _showPlaceholderMessage(context, 'User'),
+                                onPressed: () => context.push('/login/user'),
                               ),
                               SizedBox(width: isWide ? 32 : 0, height: isWide ? 0 : 24),
                               _AccountCard(
@@ -116,10 +124,35 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickyHeaderDelegate({required this.child});
+
+  @override
+  double get minExtent => 72;
+
+  @override
+  double get maxExtent => 72;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_StickyHeaderDelegate oldDelegate) {
+    return child != oldDelegate.child;
   }
 }
 

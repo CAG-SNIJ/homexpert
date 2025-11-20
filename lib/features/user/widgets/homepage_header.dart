@@ -1,20 +1,77 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/user_model.dart';
 
-class HomepageHeader extends StatelessWidget {
+class HomepageHeader extends StatefulWidget {
   const HomepageHeader({super.key});
+
+  @override
+  State<HomepageHeader> createState() => _HomepageHeaderState();
+}
+
+class _HomepageHeaderState extends State<HomepageHeader> {
+  UserModel? _currentUser;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(AppConstants.tokenKey);
+      final userJson = prefs.getString(AppConstants.userKey);
+      
+      // Only load user if token exists (user is logged in)
+      if (token != null && token.isNotEmpty && userJson != null) {
+        final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+        setState(() {
+          _currentUser = UserModel.fromJson(userMap);
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _currentUser = null;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _currentUser = null;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 768) {
-            return _DesktopHeader();
+            return _DesktopHeader(
+              currentUser: _currentUser,
+              isLoading: _isLoading,
+            );
           } else {
             return _MobileHeader();
           }
@@ -25,6 +82,25 @@ class HomepageHeader extends StatelessWidget {
 }
 
 class _DesktopHeader extends StatelessWidget {
+  final UserModel? currentUser;
+  final bool isLoading;
+
+  const _DesktopHeader({
+    this.currentUser,
+    this.isLoading = false,
+  });
+
+  String _getInitials(String? name) {
+    if (name == null || name.isEmpty) return 'U';
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+    } else if (parts.length == 1) {
+      return parts[0][0].toUpperCase();
+    }
+    return 'U';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -161,7 +237,11 @@ class _DesktopHeader extends StatelessWidget {
             ),
             InkWell(
               onTap: () {
-                context.push(AppConstants.routeLogin);
+                if (currentUser != null) {
+                  context.push('/user/profile');
+                } else {
+                  context.push(AppConstants.routeLogin);
+                }
               },
               borderRadius: BorderRadius.circular(10),
               child: Container(
@@ -172,11 +252,60 @@ class _DesktopHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
-                  Icons.person_outline,
-                  color: Color(0xFF397367),
-                  size: 26,
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF397367),
+                          ),
+                        ),
+                      )
+                    : currentUser != null
+                        ? currentUser!.profileImage != null &&
+                                currentUser!.profileImage!.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  currentUser!.profileImage!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: AppTheme.primaryColor,
+                                      child: Text(
+                                        _getInitials(currentUser!.name),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppTheme.primaryColor,
+                                child: Text(
+                                  _getInitials(currentUser!.name),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                        : const Icon(
+                            Icons.person_outline,
+                            color: Color(0xFF397367),
+                            size: 26,
+                          ),
               ),
             ),
           ],

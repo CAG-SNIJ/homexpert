@@ -9,6 +9,29 @@ import '../widgets/homepage_cta_section.dart';
 import '../widgets/homepage_footer.dart';
 import '../widgets/floating_chatbot_button.dart';
 
+class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickyHeaderDelegate({required this.child});
+
+  @override
+  double get minExtent => 72;
+
+  @override
+  double get maxExtent => 72;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_StickyHeaderDelegate oldDelegate) {
+    return child != oldDelegate.child;
+  }
+}
+
 class HomepageScreen extends StatelessWidget {
   const HomepageScreen({super.key});
 
@@ -17,9 +40,12 @@ class HomepageScreen extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Header
-          const SliverToBoxAdapter(
-            child: HomepageHeader(),
+          // Sticky Header
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _StickyHeaderDelegate(
+              child: HomepageHeader(),
+            ),
           ),
           
           // Hero Section

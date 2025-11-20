@@ -1,7 +1,10 @@
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/user_login_screen.dart';
 import '../../features/user/screens/homepage_screen.dart';
+import '../../features/user/screens/user_profile_screen.dart';
+import '../../features/user/screens/edit_profile_screen.dart';
 import '../../features/user/screens/user_dashboard_screen.dart';
 import '../../features/agent/screens/agent_dashboard_screen.dart';
 import '../../features/staff/screens/staff_login_screen.dart';
@@ -27,12 +30,19 @@ class AppRouter {
       final isLoggedIn = await authService.isLoggedIn();
       final isHomePage = state.matchedLocation == AppConstants.routeHome;
       final isLoginPage = state.matchedLocation == AppConstants.routeLogin;
+      final isUserLoginPage = state.matchedLocation == '/login/user';
       final isRegisterPage = state.matchedLocation == AppConstants.routeRegister;
       final isStaffLoginPage = state.matchedLocation == AppConstants.routeStaffLogin;
+      final isUserProfilePage = state.matchedLocation == '/user/profile';
 
       // Homepage and login pages are public, no redirect needed
-      if (isHomePage || isLoginPage || isRegisterPage || isStaffLoginPage) {
+      if (isHomePage || isLoginPage || isUserLoginPage || isRegisterPage || isStaffLoginPage) {
         return null;
+      }
+
+      // User profile page requires login
+      if (isUserProfilePage && !isLoggedIn) {
+        return AppConstants.routeLogin;
       }
 
       // If not logged in and trying to access protected route
@@ -41,7 +51,7 @@ class AppRouter {
       }
 
       // If logged in and trying to access auth pages
-      if (isLoggedIn && (isLoginPage || isRegisterPage)) {
+      if (isLoggedIn && (isLoginPage || isUserLoginPage || isRegisterPage)) {
         // Redirect to appropriate dashboard based on role
         final role = await authService.getUserRole();
         switch (role) {
@@ -70,6 +80,11 @@ class AppRouter {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: '/login/user',
+        name: 'user_login',
+        builder: (context, state) => const UserLoginScreen(),
+      ),
+      GoRoute(
         path: AppConstants.routeRegister,
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
@@ -83,6 +98,16 @@ class AppRouter {
         path: AppConstants.routeUserDashboard,
         name: 'user_dashboard',
         builder: (context, state) => const UserDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/user/profile',
+        name: 'user_profile',
+        builder: (context, state) => const UserProfileScreen(),
+      ),
+      GoRoute(
+        path: '/user/profile/edit',
+        name: 'edit_profile',
+        builder: (context, state) => const EditProfileScreen(),
       ),
       GoRoute(
         path: AppConstants.routeAgentDashboard,
